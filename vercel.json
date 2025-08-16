@@ -1,0 +1,13 @@
+{
+  "version": 2,
+  "functions": {
+    "api/telegram.js": {
+      "runtime": "nodejs18.x",
+      "memory": 128,
+      "maxDuration": 10
+    }
+  },
+  "routes": [
+    { "src": "/api/telegram", "dest": "api/telegram.js" }
+  ]
+}
