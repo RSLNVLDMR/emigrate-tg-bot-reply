@@ -1,0 +1,14 @@
+{
+  "name": "emigrant-telegram-bot",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vercel dev",
+    "deploy": "vercel --prod"
+  },
+  "dependencies": {
+    "grammy": "1.33.0"
+  },
+  "devDependencies": {}
+}
