@@ -1,4 +1,4 @@
-// Serverless Telegram bot on Vercel (Node runtime, ESM)
+// api/telegram.js — Vercel serverless, grammY, ESM
 import { Bot, InlineKeyboard } from "grammy";
 
 const BOT_TOKEN = process.env.BOT_TOKEN;
@@ -11,19 +11,25 @@ if (!BOT_SECRET) throw new Error("BOT_SECRET is not set");
 
 const bot = new Bot(BOT_TOKEN);
 
-// ensure single init per cold start
-let initPromise;
-async function ensureBotInit() {
-  if (!initPromise) {
-    initPromise = bot.init().catch((e) => {
-      initPromise = undefined; // allow retry next request if init fails
+// --- Гарантируем инициализацию botInfo без падений ---
+let botInfoPromise;
+async function ensureBotInfo() {
+  // Если уже есть botInfo — выходим
+  if (bot.botInfo) return;
+  // Один запрос на холодный старт
+  if (!botInfoPromise) {
+    botInfoPromise = bot.api.getMe().then((me) => {
+      bot.botInfo = me; // <-- ключевая строка
+      return me;
+    }).catch((e) => {
+      botInfoPromise = undefined; // позволяем повторить на следующем запросе
       throw e;
     });
   }
-  return initPromise;
+  await botInfoPromise;
 }
 
-// ====== Bot logic ======
+// ===== Логика бота =====
 const PREVIEW_PREFIX = "🔎 Предпросмотр заявки:\n\nТема: ";
 
 bot.command("start", async (ctx) => {
@@ -100,9 +106,9 @@ function escapeHtml(s) {
   return s.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;");
 }
 
-// ====== Vercel handler ======
+// ===== Vercel handler =====
 export default async function handler(req, res) {
-  // Telegram проверочный секрет
+  // Проверяем секрет вебхука
   const secret = req.headers["x-telegram-bot-api-secret-token"];
   if (secret !== BOT_SECRET) {
     res.status(401).send("Unauthorized");
@@ -115,13 +121,12 @@ export default async function handler(req, res) {
   }
 
   try {
-    await ensureBotInit(); // <-- ВАЖНО
+    await ensureBotInfo();            // <-- ВАЖНО: гарантируем init
     const update = req.body || {};
-    await bot.handleUpdate(update);
+    await bot.handleUpdate(update);   // теперь ошибки Bot not initialized не будет
     res.status(200).send("OK");
   } catch (err) {
     console.error("Webhook error:", err);
-    // Возвращаем 200, чтобы Telegram не ретраил бесконечно
-    res.status(200).send("OK");
+    res.status(200).send("OK"); // чтобы TG не ретраил
   }
 }
