@@ -1,4 +1,4 @@
-// api/telegram.js — Vercel serverless, grammY, ESM
+// api/telegram.js — Vercel serverless (Node/ESM) + grammY
 import { Bot, InlineKeyboard } from "grammy";
 
 const BOT_TOKEN = process.env.BOT_TOKEN;
@@ -11,25 +11,18 @@ if (!BOT_SECRET) throw new Error("BOT_SECRET is not set");
 
 const bot = new Bot(BOT_TOKEN);
 
-// --- Гарантируем инициализацию botInfo без падений ---
-let botInfoPromise;
-async function ensureBotInfo() {
-  // Если уже есть botInfo — выходим
-  if (bot.botInfo) return;
-  // Один запрос на холодный старт
-  if (!botInfoPromise) {
-    botInfoPromise = bot.api.getMe().then((me) => {
-      bot.botInfo = me; // <-- ключевая строка
-      return me;
-    }).catch((e) => {
-      botInfoPromise = undefined; // позволяем повторить на следующем запросе
-      throw e;
-    });
-  }
-  await botInfoPromise;
+// ---- Инициализация бота один раз на холодном старте ----
+let initPromise = null;
+async function ensureBotInit() {
+  if (initPromise) return initPromise;
+  initPromise = bot.init().catch((e) => {
+    initPromise = null; // позволим повторить на следующем запросе
+    throw e;
+  });
+  return initPromise;
 }
 
-// ===== Логика бота =====
+// ===== ЛОГИКА БОТА =====
 const PREVIEW_PREFIX = "🔎 Предпросмотр заявки:\n\nТема: ";
 
 bot.command("start", async (ctx) => {
@@ -108,7 +101,7 @@ function escapeHtml(s) {
 
 // ===== Vercel handler =====
 export default async function handler(req, res) {
-  // Проверяем секрет вебхука
+  // Проверка секрета от Telegram
   const secret = req.headers["x-telegram-bot-api-secret-token"];
   if (secret !== BOT_SECRET) {
     res.status(401).send("Unauthorized");
@@ -121,12 +114,16 @@ export default async function handler(req, res) {
   }
 
   try {
-    await ensureBotInfo();            // <-- ВАЖНО: гарантируем init
+    // Критично: гарантируем init перед обработкой апдейта
+    await ensureBotInit();
+
     const update = req.body || {};
-    await bot.handleUpdate(update);   // теперь ошибки Bot not initialized не будет
+    await bot.handleUpdate(update);
+
     res.status(200).send("OK");
   } catch (err) {
     console.error("Webhook error:", err);
-    res.status(200).send("OK"); // чтобы TG не ретраил
+    // Возвращаем 200, чтобы Telegram не ретраил одно и то же
+    res.status(200).send("OK");
   }
 }
