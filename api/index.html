@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <title>Открыть чат поддержки в Telegram</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="format-detection" content="telephone=no" />
+  <style>
+    :root { color-scheme: light dark; }
+    html,body{height:100%}
+    body{
+      margin:0; display:grid; place-items:center; font-family:system-ui,-apple-system,Segoe UI,Roboto,Inter,Arial,sans-serif;
+      background:canvas; color:canvastext
+    }
+    .card{
+      max-width:560px; padding:24px; border:1px solid color-mix(in oklab, canvastext 12%, transparent);
+      border-radius:16px
+    }
+    h1{margin:0 0 8px;font-size:20px}
+    p{margin:8px 0;color:color-mix(in oklab, canvastext 70%, transparent)}
+    .row{display:flex; gap:8px; margin-top:16px; flex-wrap:wrap}
+    .btn{
+      appearance:none; border:1px solid color-mix(in oklab, canvastext 18%, transparent);
+      background: color-mix(in oklab, canvas 92%, canvastext 8%);
+      color: canvastext; padding:10px 14px; border-radius:12px; text-decoration:none; font-weight:600
+    }
+    .btn:hover{background: color-mix(in oklab, canvas 88%, canvastext 12%)}
+    code{padding:2px 6px;border-radius:6px;background:color-mix(in oklab, canvastext 10%, transparent)}
+    .muted{font-size:13px;opacity:.7}
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>Открываем чат с поддержкой</h1>
+    <p>Если Telegram установлен, чат откроется автоматически. Иначе используйте кнопки ниже.</p>
+
+    <div class="row">
+      <!-- Прямая ссылка по ID (клиент Telegram) -->
+      <a id="btn-tg-id" class="btn" href="tg://user?id=7437456248">💬 Открыть в Telegram (ID)</a>
+      <!-- Фолбэк: tg:// по username -->
+      <a id="btn-tg-username" class="btn" href="tg://resolve?domain=emigrate_support">💬 Открыть в Telegram (username)</a>
+      <!-- Веб-фолбэк: t.me -->
+      <a id="btn-web" class="btn" href="https://t.me/emigrate_support" rel="noopener">🌐 Открыть через t.me</a>
+    </div>
+
+    <p class="muted">Цель: открыть личный чат с <code>@emigrate_support</code> (ID <code>7437456248</code>).</p>
+  </div>
+
+  <script>
+    // Автооткрытие: пробуем tg://user?id=..., затем tg://resolve?domain=..., затем https://t.me/...
+    (function() {
+      const tgById = "tg://user?id=7437456248";
+      const tgByUsername = "tg://resolve?domain=emigrate_support";
+      const webFallback = "https://t.me/emigrate_support";
+
+      // Попытка открыть tg://
+      const tryOpen = (url) => {
+        // Пробуем через смену location — работает на iOS/Android/Desktop
+        window.location.href = url;
+      };
+
+      // Последовательно пробуем варианты с небольшими таймаутами
+      setTimeout(() => tryOpen(tgById), 100);              // 1) по ID
+      setTimeout(() => tryOpen(tgByUsername), 900);        // 2) по username
+      setTimeout(() => { window.location.href = webFallback; }, 1800); // 3) веб-фолбэк
+    })();
+  </script>
+</body>
+</html>
